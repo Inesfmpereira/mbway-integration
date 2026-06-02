@@ -1,7 +1,14 @@
 const express = require('express');
-const stripe = require('stripe')('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'); // Coloque sua chave live aqui
+const stripe = require('stripe')(process.env.mk_1Szg4MLxPLC7ky4NusMIkOVv);
 
 const app = express();
+
+// Middleware
+app.use('/webhook', express.raw({type: 'application/json'}));
+app.use(express.json());
+app.use(express.static('public'));
+
+const endpointSecret = process.env.whsec_01b6a8ce3585b8b6551632ee691f4a9dffa8206847bd3bca47733ccc5f92d0ce;
 
 // IMPORTANTE: Para webhooks, raw middleware deve vir ANTES de json()
 app.use('/webhook', express.raw({type: 'application/json'}));
