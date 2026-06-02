@@ -1,6 +1,5 @@
 const express = require('express');
-const stripe = require('stripe')(process.env.mk_1Szg4MLxPLC7ky4NusMIkOVv);
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // ✅ Usa variável de ambiente
 const app = express();
 
 // Middleware
@@ -8,7 +7,7 @@ app.use('/webhook', express.raw({type: 'application/json'}));
 app.use(express.json());
 app.use(express.static('public'));
 
-const endpointSecret = process.env.whsec_01b6a8ce3585b8b6551632ee691f4a9dffa8206847bd3bca47733ccc5f92d0ce;
+const endpointSecret = process.env.WEBHOOK_SECRET; // ✅ Usa variável de ambiente
 
 // IMPORTANTE: Para webhooks, raw middleware deve vir ANTES de json()
 app.use('/webhook', express.raw({type: 'application/json'}));
@@ -16,7 +15,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // Signing secret do webhook (copie do Dashboard)
-const endpointSecret = 'whsec_01b6a8ce3585b8b6551632ee691f4a9dffa8206847bd3bca47733ccc5f92d0ce';
+const endpointSecret = process.env.WEBHOOK_SECRET;
 
 // Endpoint para receber webhooks
 app.post('/webhook', (req, res) => {
