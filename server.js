@@ -1,5 +1,6 @@
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); // ✅ Usa variável de ambiente
+
 const app = express();
 
 // Middleware
@@ -18,8 +19,8 @@ app.use(express.static('public'));
 const endpointSecret = process.env.WEBHOOK_SECRET;
 
 // Endpoint para receber webhooks
-app.post('/webhook', (req, res) => {
-whsec_b5u12RSidbNjWZEk2OM1P5mQk60qu9IH});
+app.post('/webhook', (req, res) => {WEBHOOK_SECRET
+});
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -119,8 +120,8 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/cancel.html`,
+      success_url: 'https://mbway-integration-abc123.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://mbway-integration-abc123.vercel.app/cancel.html',,
       automatic_tax: {enabled: false},
       billing_address_collection: 'auto',
       customer_creation: 'always',
