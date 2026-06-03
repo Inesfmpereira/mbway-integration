@@ -19,7 +19,7 @@ app.use(express.static('public'));
 const endpointSecret = process.env.WEBHOOK_SECRET;
 
 // Endpoint para receber webhooks
-app.post('/webhook', (req, res) => {WEBHOOK_SECRET
+app.post('/webhook', (req, res) => ({WEBHOOK_SECRET
 });
   const sig = req.headers['stripe-signature'];
   let event;
