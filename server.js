@@ -111,7 +111,7 @@ app.get('/cancel', (req, res) => {
 // Webhook (básico)
 app.post('/webhook', (req, res) => {
   console.log('📨 Webhook recebido');
-  res.json{received: true});
+  res.json({received: true});
 });
 
 const PORT = process.env.PORT || 3000;
