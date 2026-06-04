@@ -68,21 +68,21 @@ app.post('/create-checkout', async (req, res) => {
     }
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'multibanco'],
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: 'Produto Teste MB WAY'
-          },
-          unit_amount: 2000 // €20.00
-        },
-        quantity: 1
-      }],
-      mode: 'payment',
-      success_url: 'https://mbway-integration.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://mbway-integration.vercel.app/cancel'
-    });
+  // Deixar vazio para métodos automáticos baseados na localização
+  line_items: [{
+    price_data: {
+      currency: 'eur',
+      product_data: {
+        name: 'Produto Teste MB WAY'
+      },
+      unit_amount: 2000 // €20.00
+    },
+    quantity: 1
+  }],
+  mode: 'payment',
+  success_url: 'https://SEU-URL.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+  cancel_url: 'https://SEU-URL.vercel.app/cancel'
+});
 
     console.log('✅ Checkout criado:', session.id);
     res.json({ url: session.url });
