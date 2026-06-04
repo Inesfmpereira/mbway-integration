@@ -1,18 +1,21 @@
 const express = require('express');
 const app = express();
 
-// Middleware
+// Middleware para webhook DEVE vir ANTES do express.json()
 app.use('/webhook', express.raw({type: 'application/json'}));
+
+// Outros middlewares
 app.use(express.static('public'));
 app.use(express.json());
 
-// Inicializar Stripe com variável de ambiente
+// Configurar Stripe
+const stripeKey = process.env.STRIPE_SECRET_KEY;
 let stripe;
 try {
-  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  stripe = require('stripe')(stripeKey);
   console.log('✅ Stripe inicializado');
 } catch (error) {
-  console.error('❌ Erro ao inicializar Stripe:', error.message);
+  console.error('❌ Erro Stripe:', error.message);
 }
 
 // Página inicial
@@ -20,31 +23,30 @@ app.get('/', (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Pagamento MB WAY</title>
+        <title>MB WAY Test</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-          button { background: #5469d4; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+          body { font-family: Arial; padding: 20px; text-align: center; }
+          button { background: #5469d4; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
           button:hover { background: #4356c7; }
         </style>
       </head>
       <body>
-        <h1>Teste MB WAY - Funcionando! ✅</h1>
+        <h1>🇵🇹 Teste MB WAY</h1>
         <p>Produto: Teste - €20.00</p>
-        <button onclick="createCheckout()">Pagar com MB WAY</button>
+        <button onclick="pay()">Pagar com MB WAY</button>
         
-        <script>
-          async function createCheckout() {
+        <script>         async function pay() {
             try {
-              const response = await fetch('/create-checkout-session', { method: 'POST' });
-              const session = await response.json();
+              const res = await fetch('/checkout', { method: 'POST' });
+              const data = await res.json();
               
-              if (session.url) {
-                window.location = session.url;
+              if (data.url) {
+                window.location = data.url;
               } else {
-                alert('Erro: ' + session.error);
+                alert('Erro: ' + (data.error || 'Desconhecido'));
               }
-            } catch (error) {
-              alert('Erro ao criar sessão: ' + error.message);
+            } catch (err) {
+              alert('Erro: ' + err.message);
             }
           }
         </script>
@@ -53,65 +55,48 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Criar sessão de checkout
-app.post('/create-checkout-session', async (req, res) => {
+// Checkout
+app.post('/checkout', async (req, res) => {
   try {
-    console.log('🛒 Criando sessão de checkout...');
-    
+    if (!stripe) {
+      throw new Error('Stripe não inicializado');
+    }
+
+    const baseUrl = req.headers.origin || \`https://\${req.headers.host}\`;
+
     const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card', 'multibanco'],
       line_items: [{
         price_data: {
           currency: 'eur',
-          product_data: {
-            name: 'Produto Teste MBWAY',
-          },
-          unit_amount: 2000, // €20.00
+          product_data: { name: 'Teste MB WAY' },
+          unit_amount: 2000,
         },
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${req.headers.origin || 'https://mbway-integration.vercel.app/'}/success`,
-      cancel_url: `${req.headers.origin || 'https://mbway-integration.vercel.app/'}/cancel`,
+      success_url: \`\${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}\`,
+      cancel_url: \`\${baseUrl}/cancel\`,
     });
 
     console.log('✅ Sessão criada:', session.id);
-    res.json({url: session.url});
+    res.json({ url: session.url });
     
   } catch (error) {
-    console.error('❌ Erro ao criar sessão:', error.message);
-    res.status(500).json({error: error.message});
+    console.error('Erro checkout:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 
-// Páginas de sucesso e cancelamento
-app.get('/success', (req, res) => {
-  res.send(`
-    <html>
-      <body style="font-family: Arial; text-align: center; padding: 50px;">
-        <h1 style="color: green;">✅ Pagamento realizado com sucesso!</h1>
-        <p>Obrigado pela sua compra com MB WAY.</p>
-        <a href="/">← Voltar ao início</a>
-      </body>
-    </html>
-  `);
-});
-
-app.get('/cancel', (req, res) => {
-  res.send(`
-    <html>
-      <body style="font-family: Arial; text-align: center; padding: 50px;">
-        <h1 style="color: red;">❌ Pagamento cancelado</h1>
-        <p>Pode tentar novamente quando quiser.</p>
-        <a href="/">← Voltar ao início</a>
-      </body>
-    </html>
-  `);
-});
-
-// Webhook completo
-app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+// Webhook - SEM express.raw() aqui (já está definido acima)
+app.post('/webhook', (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.WEBHOOK_SECRET;
+
+  if (!endpointSecret) {
+    console.log('⚠️ WEBHOOK_SECRET não configurado');
+    return res.status(400).send('Webhook secret não configurado');
+  }
 
   let event;
 
@@ -119,8 +104,8 @@ app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     console.log('✅ Webhook verificado:', event.type);
   } catch (err) {
-    console.log(`❌ Webhook erro: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    console.log(\`❌ Webhook erro: \${err.message}\`);
+    return res.status(400).send(\`Webhook Error: \${err.message}\`);
   }
 
   // Processar eventos
@@ -129,21 +114,26 @@ app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
       const session = event.data.object;
       console.log('🎉 Pagamento completo!', session.id);
       console.log('💰 Valor:', session.amount_total / 100, 'EUR');
-      console.log('📧 Cliente:', session.customer_details?.email);
-      // Aqui você adica sua lógica de negócio
       break;
 
-    case 'payment_intent.succeeded':
-      console.log('✅ Payment Intent succeeded:', event.data.object.id);
-      break;
-
-    case 'payment_intent.payment_failed':
-      console.log('❌ Payment failed:', event.data.object.id);
+    case 'payment_intent.cceeded':
+      console.log('✅ Payment succeeded:', event.data.object.id);
       break;
 
     default:
-      console.log(`Evento não tratado: ${event.type}`);
+      console.log(\`Evento: \${event.type}\`);
   }
 
   res.json({received: true});
 });
+
+// Páginas
+app.get('/success', (req, res) => {
+  res.send('<h1 style="color:green;">✅ Pagamento realizado com sucesso!</h1><a href="/">← Voltar</a>');
+});
+
+app.get('/cancel', (req, res) => {
+  res.send('<h1 style="color:red;">❌ Pagamento cancelado</h1><a href="/">← Voltar</a>');
+});
+
+module.exports = app;
