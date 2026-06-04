@@ -108,15 +108,42 @@ app.get('/cancel', (req, res) => {
   `);
 });
 
-// Webhook (básico)
-app.post('/webhook', (req, res) => {
-  console.log('📨 Webhook recebido');
+// Webhook completo
+app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('✅ Webhook verificado:', event.type);
+  } catch (err) {
+    console.log(`❌ Webhook erro: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Processar eventos
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      console.log('🎉 Pagamento completo!', session.id);
+      console.log('💰 Valor:', session.amount_total / 100, 'EUR');
+      console.log('📧 Cliente:', session.customer_details?.email);
+      // Aqui você adica sua lógica de negócio
+      break;
+
+    case 'payment_intent.succeeded':
+      console.log('✅ Payment Intent succeeded:', event.data.object.id);
+      break;
+
+    case 'payment_intent.payment_failed':
+      console.log('❌ Payment failed:', event.data.object.id);
+      break;
+
+    default:
+      console.log(`Evento não tratado: ${event.type}`);
+  }
+
   res.json({received: true});
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
-
-module.exports = app;
