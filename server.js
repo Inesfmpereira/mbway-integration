@@ -70,8 +70,8 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${req.headers.origin || 'https://seu-dominio.vercel.app'}/success`,
-      cancel_url: `${req.headers.origin || 'https://seu-dominio.vercel.app'}/cancel`,
+      success_url: `${req.headers.origin || 'https://mbway-integration.vercel.app/'}/success`,
+      cancel_url: `${req.headers.origin || 'https://mbway-integration.vercel.app/'}/cancel`,
     });
 
     console.log('✅ Sessão criada:', session.id);
