@@ -1,21 +1,23 @@
 const express = require('express');
 const app = express();
 
-// Middleware para webhook DEVE vir ANTES do express.json()
-app.use('/webhook', express.raw({type: 'application/json'}));
-
-// Outros middlewares
+// Middleware básico
 app.use(express.static('public'));
 app.use(express.json());
 
 // Configurar Stripe
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 let stripe;
-try {
-  stripe = require('stripe')(stripeKey);
-  console.log('✅ Stripe inicializado');
-} catch (error) {
-  console.error('❌ Erro Stripe:', error.message);
+
+if (stripeKey) {
+  try {
+    stripe = require('stripe')(stripeKey);
+    console.log('✅ Stripe OK');
+  } catch (error) {
+    console.error('❌ Stripe erro:', error.message);
+  }
+} else {
+  console.error('❌ STRIPE_SECRET_KEY não encontrada');
 }
 
 // Página inicial
@@ -25,28 +27,42 @@ app.get('/', (req, res) => {
       <head>
         <title>MB WAY Test</title>
         <style>
-          body { font-family: Arial; padding: 20px; text-align: center; }
-          button { background: #5469d4; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+          body { font-family: Arial; padding: 20px; text-align: center; background: #f5f5f5; }
+          .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+          button { background: #5469d4; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; }
           button:hover { background: #4356c7; }
+          .price { font-size: 24px; font-weight: bold; color: #333; margin: 20px 0; }
         </style>
       </head>
       <body>
-        <h1>🇵🇹 Teste MB WAY</h1>
-        <p>Produto: Teste - €20.00</p>
-        <button onclick="pay()">Pagar com MB WAY</button>
+        <div class="container">
+          <h1>🇵🇹 Pagamento MB WAY</h1>
+          <div class="price">€20.00</div>
+          <p>Produto de teste</p>
+          utton onclick="pay()">Pagar Agora</button>
+        </div>
         
-        <script>         async function pay() {
+        <script>
+          async function pay() {
             try {
-              const res = await fetch('/checkout', { method: 'POST' });
+              document.querySelector('button').textContent = 'Processando...';
+              
+              const res = await fetch('/checkout', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              
               const data = await res.json();
               
               if (data.url) {
-                window.location = data.url;
+                window.location.href = data.url;
               } else {
-                alert('Erro: ' + (data.error || 'Desconhecido'));
+                alert('Erro: ' + (data.error || 'Erro desconhecido'));
+                document.querySelector('button').textContent = 'Pagar Agora';
               }
             } catch (err) {
-              alert('Erro: ' + err.message);
+              alert('Erro de rede: ' + err.message);
+              document.querySelector('button').textContent = 'Pagar Agora';
             }
           }
         </script>
@@ -55,85 +71,81 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Checkout
+// Checkout endpoint
 app.post('/checkout', async (req, res) => {
   try {
+    console.log('🛒 Iniciando checkout...');
+    
     if (!stripe) {
-      throw new Error('Stripe não inicializado');
+      throw new Error('Stripe não inicializao - verifique STRIPE_SECRET_KEY');
     }
 
-    const baseUrl = req.headers.origin || \`https://\${req.headers.host}\`;
+    const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+    console.log('🔗 Base URL:', baseUrl);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'multibanco'],
       line_items: [{
         price_data: {
           currency: 'eur',
-          product_data: { name: 'Teste MB WAY' },
-          unit_amount: 2000,
+          product_data: { 
+            name: Produto Teste MB WAY',
+            description: 'Teste de integração'
+          },
+          unit_amount: 2000, // €20.00
         },
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: \`\${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}\`,
-      cancel_url: \`\${baseUrl}/cancel\`,
+      success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/cancel`,
     });
 
-    console.log('✅ Sessão criada:', session.id);
+    console.log('✅ Checkout sessão criada:', session.id);
     res.json({ url: session.url });
     
   } catch (error) {
-    console.error('Erro checkout:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Erro no checkout:', error);
+    res.status(500).json({ 
+      error: error.message,
+      code: error.code,
+      type: error.type 
+    });
   }
 });
 
-// Webhook - SEM express.raw() aqui (já está definido acima)
-app.post('/webhook', (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.WEBHOOK_SECRET;
-
-  if (!endpointSecret) {
-    console.log('⚠️ WEBHOOK_SECRET não configurado');
-    return res.status(400).send('Webhook secret não configurado');
-  }
-
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('✅ Webhook verificado:', event.type);
-  } catch (err) {
-    console.log(\`❌ Webhook erro: \${err.message}\`);
-    return res.status(400).send(\`Webhook Error: \${err.message}\`);
-  }
-
-  // Processar eventos
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
-      console.log('🎉 Pagamento completo!', session.id);
-      console.log('💰 Valor:', session.amount_total / 100, 'EUR');
-      break;
-
-    case 'payment_intent.cceeded':
-      console.log('✅ Payment succeeded:', event.data.object.id);
-      break;
-
-    default:
-      console.log(\`Evento: \${event.type}\`);
-  }
-
-  res.json({received: true});
-});
-
-// Páginas
+// Páginas de resultado
 app.get('/success', (req, res) => {
-  res.send('<h1 style="color:green;">✅ Pagamento realizado com sucesso!</h1><a href="/">← Voltar</a>');
+  const sessionId = req.query.session_id;
+  res.send(`
+    <html>
+      <body style="font-family: Arial; text-align: center; padding: 50px; background: #f0f8f0;">
+        <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px;">
+          <h1 style="color: #28a745;">✅ Pagamento Realizado!</h1>
+          <p>Obrigado pela sua compra com MB WAY.</p>
+          <p style="font-size: 12px; color: #666;">ID: ${sessionId}</p>
+          <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Voltar ao início</a>
+        </div>
+      </body>
+    </html>
+  `);
 });
 
 app.get('/cancel', (req, res) => {
-  res.send('<h1 style="color:red;">❌ Pagamento cancelado</h1><a href="/">← Voltar</a>');
+  res.send(`
+    <html>
+      <body style="font-family: Arial; text-align: center; padding: 50px; background: #fdf2f2;">
+        <div style="max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px;">
+          <h1 style="color: #dc3545;">❌ Pagamento Cancelado</h1>
+          <p>Não foi efetuado qualquer pagamento.</p>
+          <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">← Tentar novamente</a>
+        </div>
+      </body>
+    </html>
+  `);
 });
 
-module.exports = app;
+// Debug endpoint
+app.get('/debug', (req, res) => {
+  res.json({
+    timestamp: new Date().toISOString(),
