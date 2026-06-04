@@ -119,10 +119,34 @@ app.get('/cancel', (req, res) => {
   `);
 });
 
-// Webhook básico SEM processamento (para não dar erro)
-app.post('/webhook', (req, res) => {
-  console.log('📨 Webhook recebido (ásico)');
-  res.json({ received: true });
+// Webhook simples (sem verificação de signature por enquanto)
+app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  try {
+    const event = JSON.parse(req.body);
+    console.log('📨 Webhook recebido:', event.type);
+    
+    switch (event.type) {
+      case 'checkout.session.completed':
+        constsession = event.data.object;
+        console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
+        console.log(`💰 Valor: €${session.amount_total / 100}`);
+        console.log(`📧 Cliente{session.customer_details?.email || 'N/A'}`);
+        console.log(`🆔 Sessão: ${session.id}`);
+        break;
+        
+      case 'payment_intent.succeeded':
+        console.log('✅ Payment succeeded:', event.data.object.id);
+        break;
+        
+      default:
+        console.log(`📋 Evento recebido: ${event.type}`);
+    }
+       res.json({received: true});
+    
+  } catch (error) {
+    console.log('❌ Erro no webhook:', error.message);
+    res.json({received: true}); // Responder OK mesmo com erro
+  }
 });
 
 module.exports = app;
