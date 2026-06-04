@@ -4,20 +4,17 @@ const app = express();
 // Middleware para webhook (deve estar no início do arquivo, após express())
 app.use('/webhook', express.raw({type: 'application/json'}));
 
-// Webhook endpoint (substitua o atual)
+// Webhook endpoint
 app.post('/webhook', (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.WEBHOOK_SECRET;
 
-  console.log('📨 Webhook recebido...');
-
   if (!endpointSecret) {
-    console.log('⚠ WEBHOOK_SECRET não configurado');
+    console.log('⚠️ WEBHOOK_SECRET não configurado');
     return res.status(200).json({received: true});
   }
 
   let event;
-
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     console.log('✅ Webhook verificado:', event.type);
@@ -26,39 +23,26 @@ app.post('/webhook', (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Processar diferentes tipos de eventos
   switch (event.type) {
     case 'checkout.session.completed':
       const session = event.data.object;
-      console.log('🎉 PAGAMENTO COMPLETADO!');
-      console.log(`💰 Valor: €${session.amount_total / 0}`);
-      console.log(`📧 Cliente: ${session.customer_details?.email || 'N/A'}`);
-      console.log(`🆔 Sessão: ${session.id}`);
-      
-      // Aquvocê pode adicionar:
-      // - Enviar email de confirmação
-      // - Salvar na base de dados  
-      // - Ativar produto/serviço
-      // - Notificar outros sistemas
-      
+      console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
+      console.log(`💰 €${session.amount_total / 100);
+      console.log(`📧 ${session.customer_details?.email}`);
+      console.log(`🆔 ${session.id}`);
       break;
 
     case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      console.log('✅ Pagamento bem-sucedido:', paymentIntent.id);
-      console.log(`💳 Método: ${paymentIntent.payment_method_types.join(', ')}`);
+      console.log('✅ Pagamento succeeded:', event.data.object.id);
       break;
 
     case 'payment_intent.payment_failed':
-      const failedPayment = event.data.bject;
-      console.log('❌ Pagamento falhado:', failedPayment.id);
-      console.log(`🔍 Motivo: ${failedPayment.last_payment_error?.message || 'N/A'}`);      break;
+      console.log('❌ Pagamento failed:', event.data.object.id);
+      break;
 
-    default:
-      console.log(`📋 Evento recebido: ${event.type}`);
+    default:     console.log(`📋 Evento: ${event.type}`);
   }
 
-  // Sempre responder 200 para confirmar recebimento
   res.json({received: true});
 });
 
@@ -137,8 +121,8 @@ app.post('/create-checkout', async (req, res) => {
     quantity: 1
   }],
   mode: 'payment',
-  success_url: 'https://SEU-URL.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-  cancel_url: 'https://SEU-URL.vercel.app/cancel'
+  success_url: 'https://mbway-integration.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+  cancel_url: 'https://mbway-integration.vercel.app/cancel'
 });
 
     console.log('✅ Checkout criado:', session.id);
