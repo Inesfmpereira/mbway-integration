@@ -1,50 +1,9 @@
 const express = require('express');
 const app = express();
 
-// Middleware para webhook (deve estar no início do arquivo, após express())
-app.use('/webhook', express.raw({type: 'application/json'}));
-
-// Webhook endpoint
-app.post('/webhook', (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.WEBHOOK_SECRET;
-
-  if (!endpointSecret) {
-    console.log('⚠️ WEBHOOK_SECRET não configurado');
-    return res.status(200).json({received: true});
-  }
-
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('✅ Webhook verificado:', event.type);
-  } catch (err) {
-    console.log(`❌ Webhook erro: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
-      console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
-      console.log(`💰 €${session.amount_total / 100);
-      console.log(`📧 ${session.customer_details?.email}`);
-      console.log(`🆔 ${session.id}`);
-      break;
-
-    case 'payment_intent.succeeded':
-      console.log('✅ Pagamento succeeded:', event.data.object.id);
-      break;
-
-    case 'payment_intent.payment_failed':
-      console.log('❌ Pagamento failed:', event.data.object.id);
-      break;
-
-    default:     console.log(`📋 Evento: ${event.type}`);
-  }
-
-  res.json({received: true});
-});
+// Middleware básico
+app.use(express.static('public'));
+app.use(express.json());
 
 // Configurar Stripe
 const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -70,20 +29,18 @@ app.get('/', (req, res) => {
         </style>
       </head>
       <body>
-        <h1>🇵🇹 MBAY Integration</h1>
-        <p><strong>Produto:</strong> Teste MB WAY - €20.00</p>
+        <h1>🇵🇹 MB WAY Integration</h1>
+        <p><strong>Produto:</strong> Teste MBAY - €20.00</p>
         <button onclick="createCheckout()">💳 Pagar Agora</button>
         
         <script>
           async function createCheckout() {
             try {
-              console.log('Criando checkout...');
-              
-              const response = await fetch('/create-checkout', {                 method: 'POST',
+              const response = await fetch('/create-checkout', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
               });
-              
-              const data = await response.json();
+                            const data = await response.json();
               
               if (data.url) {
                 window.location.href = data.url;
@@ -103,27 +60,25 @@ app.get('/', (req, res) => {
 // Criar checkout session
 app.post('/create-checkout', async (req, res) => {
   try {
-    console.log('📝 Iniciando checkout...');    
     if (!stripe) {
       throw new Error('Stripe não configurado');
     }
 
     const session = await stripe.checkout.sessions.create({
-  // Deixar vazio para métodos automáticos baseados na localização
-  line_items: [{
-    price_data: {
-      currency: 'eur',
-      product_data: {
-        name: 'Produto Teste MB WAY'
-      },
-      unit_amount: 2000 // €20.00
-    },
-    quantity: 1
-  }],
-  mode: 'payment',
-  success_url: 'https://mbway-integration.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-  cancel_url: 'https://mbway-integration.vercel.app/cancel'
-});
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: 'Produto Teste MB WAY'
+          },
+          unit_amount: 2000 // €20.00
+        },
+        quantity: 1
+      }],
+      mode: 'payment',
+      success_url: 'https://mbway-integration.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://mbway-integration.vercel.app/cancel'
+    });
 
     console.log('✅ Checkout criado:', session.id);
     res.json({ url: session.url });
@@ -164,18 +119,10 @@ app.get('/cancel', (req, res) => {
   `);
 });
 
-// Webhook básico (SEM processamento por enquanto)
+// Webhook básico SEM processamento (para não dar erro)
 app.post('/webhook', (req, res) => {
-  console.log('📨 Webhook recebido');
+  console.log('📨 Webhook recebido (ásico)');
   res.json({ received: true });
-});
-
-// Health check
-app.get('/health', (req, res) => {  res.json({
-    status: 'OK',
-    stripe: !!stripe,
-    timestamp: new Date().toISOString()
-  });
 });
 
 module.exports = app;
