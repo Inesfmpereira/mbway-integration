@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
         <div class="container">
           <h1>Pé na Areia</h1>
           <p>status: ${stripe ? '✅ MB WAY Ativo' : '⚠️ Configurando...'}</p>
-          <button onclick="testar()">🇵🇹 Testar MB WAY</button>
+          <button onclick="testar()">MB WAY</button>
         </div>
         
         <script>
