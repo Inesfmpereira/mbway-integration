@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Pé na Areia - MB WAY</title>
+        <title>Pé na Areia - PAGAMENTO SEGURO</title>
         <style>
           body { font-family: Arial; text-align: center; padding: 50px; background: #f0f9ff; }
           .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 20px; }
@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
         <div class="container">
           <h1>Pé na Areia</h1>
           <p>status: ${stripe ? '✅ MB WAY Ativo' : '⚠️ Configurando...'}</p>
-          <button onclick="testar()">MB WAY</button>
+          <button onclick="testar()">PAGAMENTO</button>
         </div>
         
         <script>
