@@ -119,34 +119,72 @@ app.get('/cancel', (req, res) => {
   `);
 });
 
-// Webhook simples (sem verificação de signature por enquanto)
+// Webhook seguro com verificação de signature
 app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
-  try {
-    const event = JSON.parse(req.body);
-    console.log('📨 Webhook recebido:', event.type);
-    
-    switch (event.type) {
-      case 'checkout.session.completed':
-        constsession = event.data.object;
-        console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
-        console.log(`💰 Valor: €${session.amount_total / 100}`);
-        console.log(`📧 Cliente{session.customer_details?.email || 'N/A'}`);
-        console.log(`🆔 Sessão: ${session.id}`);
-        break;
-        
-      case 'payment_intent.succeeded':
-        console.log('✅ Payment succeeded:', event.data.object.id);
-        break;
-        
-      default:
-        console.log(`📋 Evento recebido: ${event.type}`);
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.WEBHOOK_SECRET;
+  
+  console.log('📨 Webhook recebido...');
+
+  // Se não tiver webhook secret, funciona como básico
+  if (!endpointSecret) {
+    console.log('⚠️ WEBHOOK_SECRET não configurado -usando modo básico');
+    try {
+      const event = JSON.parse(req.body);
+      processarEvento(event);
+      return res.json({received: true});
+    } catch (error) {
+      console.log('❌ Erro webhook básico:', error.message);
+      return res.json({received: true});
     }
-       res.json({received: true});
-    
-  } catch (error) {
-    console.log('❌ Erro no webhook:', error.message);
-    res.json({received: true}); // Responder OK mesmo com erro
   }
+
+  // Verificação de segurança com Stripe
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('✅ Webhook verificado com segurança:', event.type);
+  } catch (err) {
+    console.log(`❌ Falha na verificação: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  processarEvento(event);
+  res.json({received: true});
 });
 
-module.exports = app;
+// Função para processar eventos (reutilizada)
+function processarEvento(event) {
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
+      console.log(`💰 Valor: €${session.amount_total / 100}`);
+      console.log(`📧 Cliente:session.customer_details?.email || 'N/A'}`);
+      console.log(`🆔 Sessão: ${session.id}`);
+      console.log(`💳 Métodos: ${session.payment_method_types?.join(', ') || 'N/A'}`);
+      
+      // Aqui você pode adicionar:
+      // - Salvar naase de dados
+      // - Enviar email de confirmação
+      // - Ativar produto/serviço
+      // - Notificar outros sistemas
+      
+      break;
+
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      console.log('✅ Pagamento succeeded:', paymentIntent.id);
+      console.log(`💳 Método usado: ${paymentIntent.payment_method_types?.join(', ')}`);
+      break;
+
+    case 'payment_intent.payment_failed':
+      const failedPayment = event.data.object;
+      console.log('❌ Pagamento failed:', failedPayment.id);
+      onsole.log(`🔍 Motivo: ${failedPayment.last_payment_error?.message || 'N/A'}`);
+      break;
+
+    default:
+      console.log(`📋 Evento recebido: ${event.type}`);
+  }
+}
