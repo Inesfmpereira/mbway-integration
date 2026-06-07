@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
       <body>
         <div class="container">
           <h1>Pé na Areia</h1>
-          <p>status: ${stripe ? '✅ MB WAY Ativo' : '⚠️ Configurando...'}</p>
+          <p>status: ${stripe ? '' : '⚠️ Configurando...'}</p>
           <button onclick="testar()">PAGAMENTO</button>
         </div>
         
