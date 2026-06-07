@@ -111,8 +111,8 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: 'https://pe-na-areia.pt/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://pe-na-areia.pt/cancel.html',
+      success_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/cancel.html`,
       automatic_tax: {enabled: false}, // Configure conforme necessário
       billing_address_collection: 'auto',
       customer_creation: 'always', // Criar sempre um customer
