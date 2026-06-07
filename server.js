@@ -119,53 +119,8 @@ app.get('/cancel', (req, res) => {
   `);
 });
 
-// Webhook simplificado que sempre funciona
+// Webhook ultra-simples
 app.post('/webhook', (req, res) => {
-  try {
-    console.log('📨 Webhook recebido');
-    
-    // Tentar processar como evento Stripe
-    let event;
-    
-    // Se tiver signature e secret, tentar verificar
-    const sig = req.headers['stripe-signature'];
-    const secret = process.env.WEBHOOK_SECRET;
-        if (sig && secret && stripe) {
-      try {
-        // Usar raw body do express para verificação
-        const rawBody = req.body;
-        event = stripe.webhooks.constructEvent(rawBody, sig, secret);
-        console.log('✅ Webhook verificado:', event.type);
-      } catch (verifyError) {
-        console.log('⚠️ Verificação falhou, usando evento básico');
-        event = JSON.parse(req.body.toString());
-      }
-    } else {
-      // Fallback para evento básico
-      event = JSON.parse(req.body.toString());
-      console.log('📋 Evento básico:', event.type);
-    }
-
-    // Processar evento
-    switch (event.type) {
-      case 'checkout.session.completed':
-        const session = event.data.object;
-        console.log('🎉 PAGAMENTO MB WAY COMPLETADO!');
-        console.log(`💰 €${session.amount_total / 100}`);
-        console.log(`📧 ${ion.customer_details?.email || 'N/A'}`);
-        console.log(`🆔 ${session.id}`);
-        break;
-        
-      case 'payment_intent.succeeded':
-        console.log('✅ Payment succeeded:', event.data.object.id);
-        break;
-        
-      default:
-        console.log(`📋 Evento: ${event.type}`);
-    }  } catch (error) {
-    console.log('❌ Erro webhook:', error.message);
-  }
-  
-  // Sempre responder OK para evitar reenvios
-  res.status(200).json({received: true});
+  console.log('📨 Webhook recebido - OK');
+  res.json({received: true});
 });
