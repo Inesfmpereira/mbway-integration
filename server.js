@@ -1,15 +1,14 @@
 const express = require('express');
-const stripe = require('stripe')('sk_live_SUA_CHAVE_DE_PRODUCAO'); // Coloque sua chave live aqui
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 
-// IMPORTANTE: Para webhooks, raw middleware deve vir ANTES de json()
+// Middleware
 app.use('/webhook', express.raw({type: 'application/json'}));
 app.use(express.json());
 app.use(express.static('public'));
 
-// Signing secret do webhook (copie do Dashboard)
-const endpointSecret = 'whsec_vIHW8We9KoB1dx6O2yXGH4yRdsvhTIpx';
+const endpointSecret = process.env.WEBHOOK_SECRET;
 
 // Endpoint para receber webhooks
 app.post('/webhook', (req, res) => {
