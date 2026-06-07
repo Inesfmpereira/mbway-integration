@@ -86,17 +86,4 @@ app.get('/checkout-direto', async (req, res) => {
   }
 });
 
-// Links diretos para produtos
-app.get('/produto/passeio-barco', (req, res) => {
-  res.redirect('/checkout-direto?valor=35.00&produtos=Passeio+de+Barco&return=https://www.pe-na-areia.pt');
-});
-
-app.get('/produto/tour-grutas', (req, res) => {
-  res.redirect('/checkout-direto?valor=45.00&produtos=Tour+Grutas&return=https://www.pe-na-areia.pt');
-});
-
-app.get('/produto/experiencia-premium', (req, res) => {
-  res.redirect('/checkout-direto?valor=65.00&produtos=Experiência+Premium&return=https://www.pe-na-areia.pt');
-});
-
 module.exports = app;
