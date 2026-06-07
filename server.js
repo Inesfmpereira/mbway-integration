@@ -173,4 +173,80 @@ app.get('/test', (req, res) => {
   });
 });
 
+// API endpoint para sites externos (Webnode)
+app.post('/checkout-api', async (req, res) => {
+  try {
+    // Permitir requests do seu domínio
+    res.header('Access-Control-Allow-Origin', 'https://www.pe-na-areia.pt');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe não configurado' });
+    }
+
+    const { produto, preco, success_url, cancel_url, cliente_email } = req.body;
+    
+    if (!produto || !preco) {
+      return res.status(400).json({ error: 'Produto e preço são obrigatórios' });
+    }
+
+    console.log(`🏖️ API - Processndo: ${produto} - €${preco}`);
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: { 
+            name: `Pé na Areia - ${produto}`,
+            description: 'Experiência no Algarve'
+          },
+          unit_amount: Math.round(preco * 100), // Converter para cêntimos
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: success_url || 'https://www.pe-na-areia.pt/obrigado?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: cancel_url || 'https://www.pe-na-areia.pt/',
+      customer_email: cliente_email,
+      billing_address_collection: 'auto',
+    });
+
+    console.log(`✅ API - Checkout criado: ${session.id}`);
+    res.json({ 
+      success: true, 
+      url: session.url,
+      session_id: session.id 
+    });
+    
+  } catch (error) {
+    console.error('❌ API - Erro:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Endpoint para verificar status de pagamento
+app.get('/payment-status/:session_id', async (req, res) => {
+  try {
+    res.header('Access-Control-Allow-Origin', 'https://www.pe-na-areia.pt');
+    
+    const session = await stripe.checkout.sessions.retrieve(req.params.session_id);
+    
+    res.json({
+      status: session.payment_status,
+      customer_email: session.customer_details?.email,
+      amount_total: session.amount_total / 100
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = app;
