@@ -1,5 +1,5 @@
+const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const endpointSecret = process.env.WEBHOOK_SECRET;
 
 const app = express();
 
@@ -111,8 +111,8 @@ app.post('/create-checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:4242'}/cancel.html`,
+     success_url: 'https://mbway-integration-7iiz28z13-ines-pereira-s-projects.vercel.app/success.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://mbway-integration-7iiz28z13-ines-pereira-s-projects.vercel.app/cancel.html',,
       automatic_tax: {enabled: false}, // Configure conforme necessário
       billing_address_collection: 'auto',
       customer_creation: 'always', // Criar sempre um customer
